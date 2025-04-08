@@ -7,21 +7,27 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ChevronDown, Mail, Loader2 } from "lucide-react"
-import { authService } from "@/lib/auth"
+import { useAuth } from "../providers/auth-provider"
 
 export default function LoginPage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
   }
+
+  const { signIn, signInWithGoogle } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,13 +35,22 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await authService.login({
-        email: formData.email,
-        password: formData.password,
-      })
+      await signIn(formData.email, formData.password, formData.rememberMe)
       router.push("/dashboard")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to login")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true)
+      await signInWithGoogle()
+      router.push("/dashboard")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to login with Google")
     } finally {
       setIsLoading(false)
     }
@@ -90,6 +105,35 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onChange={handleChange}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <Link
+                href="/signup"
+                className="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
+                Don&apos;t have an account? Sign up
+              </Link>
+              <Link
+                href="/reset-password"
+                className="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <Button type="submit" className="w-full bg-green-500 hover:bg-green-600" disabled={isLoading}>
               {isLoading ? (
                 <>
@@ -123,7 +167,11 @@ export default function LoginPage() {
               Login with Facebook
             </button>
 
-            <button className="flex items-center justify-center gap-2 w-full border border-gray-300 py-2 px-4 rounded-full">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 w-full border border-gray-300 py-2 px-4 rounded-full hover:bg-gray-50"
+            >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -142,7 +190,7 @@ export default function LoginPage() {
                   fill="#EA4335"
                 />
               </svg>
-              Login with Google
+              {isLoading ? "Please wait..." : "Login with Google"}
             </button>
           </div>
         </div>

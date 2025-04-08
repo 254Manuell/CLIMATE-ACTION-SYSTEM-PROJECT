@@ -27,6 +27,9 @@ const passwordSchema = z
   .regex(/[0-9]/, 'Password must contain at least one number');
 const nameSchema = z.string().min(2, 'Name must be at least 2 characters');
 
+// API base URL from environment variable
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+
 class AuthService {
   private static instance: AuthService;
   private currentUser: User | null = null;
@@ -80,19 +83,12 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<User> {
     try {
       // Validate input
-      emailSchema.parse(credentials.email);
-      passwordSchema.parse(credentials.password);
+      emailSchema.parse(email);
+      passwordSchema.parse(password);
 
-      // Call backend API
-      const formData = new URLSearchParams();
-      formData.append('username', credentials.email);
-      formData.append('password', credentials.password);
-
-      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
+    } catch (error: any) {
         body: formData
       });
 
@@ -104,7 +100,7 @@ class AuthService {
       const { access_token } = await response.json();
 
       // Get user data
-      const userResponse = await fetch('http://localhost:8000/api/v1/users/me', {
+      const userResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         headers: {
           'Authorization': `Bearer ${access_token}`
         }
@@ -135,12 +131,18 @@ class AuthService {
       nameSchema.parse(data.name);
 
       // Call backend API
-      const response = await fetch('http://localhost:8000/api/v1/auth/signup', {
+      // Convert to form data for signup
+      const formData = new URLSearchParams();
+      formData.append('email', data.email);
+      formData.append('password', data.password);
+      formData.append('full_name', data.name);
+
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify(data)
+        body: formData
       });
 
       if (!response.ok) {
@@ -151,7 +153,7 @@ class AuthService {
       const { access_token } = await response.json();
 
       // Get user data
-      const userResponse = await fetch('http://localhost:8000/api/v1/users/me', {
+      const userResponse = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         headers: {
           'Authorization': `Bearer ${access_token}`
         }
@@ -186,7 +188,7 @@ class AuthService {
       emailSchema.parse(email);
 
       // Call backend API
-      const response = await fetch('http://localhost:8000/api/v1/auth/reset-password', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

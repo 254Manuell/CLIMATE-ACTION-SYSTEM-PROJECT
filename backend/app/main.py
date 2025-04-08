@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.api_v1.api import api_router
+from app.api.v1.api import api_router
+from fastapi.responses import JSONResponse
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -13,11 +14,16 @@ app = FastAPI(
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+    allow_origins=["*"],  # Allow all origins during development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check endpoint
+@app.get("/api/v1/health")
+def health_check():
+    return JSONResponse({"status": "healthy"})
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

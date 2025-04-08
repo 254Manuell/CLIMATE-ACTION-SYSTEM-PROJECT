@@ -1,0 +1,7 @@
+fastapi
+sqlalchemy
+alembic
+pymysql
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

@@ -3,13 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ChevronDown, Mail, Loader2 } from "lucide-react"
-import { authService } from "@/lib/auth"
+import { useAuth } from "../providers/auth-provider"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -20,40 +20,49 @@ export default function SignupPage() {
     confirmPassword: "",
   })
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { signUp, signInWithGoogle } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const [isLoading, setIsLoading] = useState(false)
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setIsLoading(true)
 
     // Basic validation
     if (!formData.name || !formData.email || !formData.password) {
       setError("All fields are required")
+      setIsLoading(false)
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
+      setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
-
     try {
-      await authService.signup({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      })
+      await signUp(formData.email, formData.password)
       router.push("/dashboard")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign up")
+      setError(err instanceof Error ? err.message : "Failed to signup")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true)
+      await signInWithGoogle()
+      router.push("/dashboard")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to signup with Google")
     } finally {
       setIsLoading(false)
     }
@@ -162,7 +171,11 @@ export default function SignupPage() {
               Sign up with Facebook
             </button>
 
-            <button className="flex items-center justify-center gap-2 w-full border border-gray-300 py-2 px-4 rounded-full">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 w-full border border-gray-300 py-2 px-4 rounded-full hover:bg-gray-50"
+            >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -181,7 +194,7 @@ export default function SignupPage() {
                   fill="#EA4335"
                 />
               </svg>
-              Sign up with Google
+              {isLoading ? "Please wait..." : "Sign up with Google"}
             </button>
           </div>
 
